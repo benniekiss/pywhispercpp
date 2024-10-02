@@ -98,7 +98,7 @@ class Model:
         self,
         media: str | np.ndarray,
         n_processors: int | None = None,
-        new_segment_callback: Callable[list[Segment]] | None = None,
+        new_segment_callback: Callable[[Segment], None] | None = None,
         **params,
     ) -> list[Segment]:
         """
