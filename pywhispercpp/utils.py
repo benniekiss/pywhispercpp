@@ -5,10 +5,14 @@
 Helper functions
 """
 import logging
+import io
 import os
 from pathlib import Path
 import requests
 from tqdm import tqdm
+import av
+from av.audio.resampler import AudioResampler
+import numpy as np
 from pywhispercpp.constants import MODELS_BASE_URL, MODELS_PREFIX_URL, AVAILABLE_MODELS, MODELS_DIR
 
 
@@ -177,3 +181,28 @@ def output_csv(segments: list, output_file_path: str) -> str:
         for seg in segments:
             file.write(f"{10 * seg.t0}, {10 * seg.t1}, \"{seg.text}\"\n")
     return absolute_path
+
+
+def media_to_array(
+    media: str | io.BytesIO,
+) -> np.ndarray:
+    """Convert an audio file to a numpy array."""
+    buffer = []
+    with av.open(media) as container:
+        resampler = AudioResampler(
+            format="s16",
+            rate=16_000,
+            layout="mono",
+        )
+        for frame in container.decode(audio=0):
+            new_frames = resampler.resample(frame)
+            for f in new_frames:
+                buffer.append(f.to_ndarray())
+
+    audio_buffer = np.concatenate(buffer, axis=1)
+    # cast to float32 and normalize the array to [0,1]
+    audio_norm = audio_buffer.astype(np.float32) / np.iinfo(buffer.dtype).max
+    # flatten to one dimension
+    audio_array = audio_norm.flatten()
+
+    return audio_array

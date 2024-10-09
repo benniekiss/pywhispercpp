@@ -5,6 +5,7 @@
 This module contains a simple Python API on-top of the C-style
 [whisper.cpp](https://github.com/ggerganov/whisper.cpp) API.
 """
+import io
 import importlib.metadata
 import logging
 import shutil
@@ -104,7 +105,7 @@ class Model:
         Transcribes the media provided as input and returns list of `Segment` objects.
         Accepts a media_file path (audio/video) or a raw numpy array.
 
-        :param media: Media file path or a numpy array
+        :param media: Media file path, file-like object, or a numpy array
         :param n_processors: if not None, it will run the transcription on multiple processes
                              binding to whisper.cpp/whisper_full_parallel
                              > Split the input audio in chunks and process each chunk separately using whisper_full()
@@ -113,12 +114,13 @@ class Model:
 
         :return: List of transcription segments
         """
-        if type(media) is np.ndarray:
+        if isinstance(media, (str, io.BytesIO)):
+            audio = self._load_audio(media)
+        elif isinstance(media, np.ndarray):
             audio = media
         else:
-            if not Path(media).exists():
-                raise FileNotFoundError(media)
-            audio = self._load_audio(media)
+            raise TypeError("media must be one of a string representing an existing filepath, a file-like object, or a np.ndarray")
+
         # update params if any
         self._set_params(params)
 
@@ -265,7 +267,7 @@ class Model:
             Model._new_segment_callback(segment)
 
     @staticmethod
-    def _load_audio(media_file_path: str) -> np.array:
+    def _load_audio(media_file_path: str | io.BytesIO) -> np.ndarray:
         """
          Helper method to return a `np.array` object from a media file
          If the media file is not a WAV file, it will try to convert it using ffmpeg
@@ -273,31 +275,8 @@ class Model:
         :param media_file_path: Path of the media file
         :return: Numpy array
         """
-        def wav_to_np(file_path):
-            with open(file_path, 'rb') as f:
-                f.read(44)
-                raw_data = f.read()
-                samples = np.frombuffer(raw_data, dtype=np.int16)
-            audio_array = samples.astype(np.float32) / np.iinfo(np.int16).max
-            return audio_array
-
-        if media_file_path.endswith('.wav'):
-            return wav_to_np(media_file_path)
-        else:
-            if shutil.which('ffmpeg') is None:
-                raise Exception("FFMPEG is not installed or not in PATH. Please install it, or provide a WAV file or a NumPy array instead!")
-
-            temp_file = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
-            temp_file_path = temp_file.name
-            temp_file.close()
-            try:
-                subprocess.run([
-                    'ffmpeg', '-i', media_file_path, '-ac', '1', '-ar', '16000',
-                    temp_file_path, '-y'
-                ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                return wav_to_np(temp_file_path)
-            finally:
-                os.remove(temp_file_path)
+        audio_array = utils.media_to_array(media=media_file_path)
+        return audio_array
 
     def __del__(self):
         """
