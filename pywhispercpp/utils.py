@@ -1,15 +1,16 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-"""
-Helper functions
-"""
 import logging
 import os
 from pathlib import Path
+
 import requests
 from tqdm import tqdm
-from pywhispercpp.constants import MODELS_BASE_URL, MODELS_PREFIX_URL, AVAILABLE_MODELS, MODELS_DIR
+
+from pywhispercpp.constants import (
+    AVAILABLE_MODELS,
+    MODELS_BASE_URL,
+    MODELS_DIR,
+    MODELS_PREFIX_URL,
+)
 
 
 def _get_model_url(model_name: str) -> str:
@@ -31,11 +32,15 @@ def download_model(model_name: str, download_dir=None, chunk_size=1024) -> str:
     :return: Absolute path of the downloaded model
     """
     if model_name not in AVAILABLE_MODELS:
-        logging.error(f"Invalid model name `{model_name}`, available models are: {AVAILABLE_MODELS}")
+        logging.error(
+            f"Invalid model name `{model_name}`, available models are: {AVAILABLE_MODELS}"
+        )
         return
     if download_dir is None:
         download_dir = MODELS_DIR
-        logging.info(f"No download directory was provided, models will be downloaded to {download_dir}")
+        logging.info(
+            f"No download directory was provided, models will be downloaded to {download_dir}"
+        )
 
     os.makedirs(download_dir, exist_ok=True)
 
@@ -47,16 +52,18 @@ def download_model(model_name: str, download_dir=None, chunk_size=1024) -> str:
     else:
         # download it from huggingface
         resp = requests.get(url, stream=True)
-        total = int(resp.headers.get('content-length', 0))
+        total = int(resp.headers.get("content-length", 0))
 
-        progress_bar = tqdm(desc=f"Downloading Model {model_name} ...",
-                            total=total,
-                            unit='iB',
-                            unit_scale=True,
-                            unit_divisor=1024)
+        progress_bar = tqdm(
+            desc=f"Downloading Model {model_name} ...",
+            total=total,
+            unit="iB",
+            unit_scale=True,
+            unit_divisor=1024,
+        )
 
         try:
-            with open(file_path, 'wb') as file, progress_bar:
+            with open(file_path, "wb") as file, progress_bar:
                 for data in resp.iter_content(chunk_size=chunk_size):
                     size = file.write(data)
                     progress_bar.update(size)
@@ -68,7 +75,7 @@ def download_model(model_name: str, download_dir=None, chunk_size=1024) -> str:
     return str(file_path.absolute())
 
 
-def to_timestamp(t: int, separator=',') -> str:
+def to_timestamp(t: int, separator=",") -> str:
     """
     376 -> 00:00:03,760
     1344 -> 00:00:13,440
@@ -100,15 +107,15 @@ def output_txt(segments: list, output_file_path: str) -> str:
     :param segments: list of segments
     :return: path of the file
     """
-    if not output_file_path.endswith('.txt'):
-        output_file_path = output_file_path + '.txt'
+    if not output_file_path.endswith(".txt"):
+        output_file_path = output_file_path + ".txt"
 
     absolute_path = Path(output_file_path).absolute()
 
-    with open(str(absolute_path), 'w') as file:
+    with open(str(absolute_path), "w") as file:
         for seg in segments:
             file.write(seg.text)
-            file.write('\n')
+            file.write("\n")
     return absolute_path
 
 
@@ -123,15 +130,17 @@ def output_vtt(segments: list, output_file_path: str) -> str:
 
     :return: Absolute path of the file
     """
-    if not output_file_path.endswith('.vtt'):
-        output_file_path = output_file_path + '.vtt'
+    if not output_file_path.endswith(".vtt"):
+        output_file_path = output_file_path + ".vtt"
 
     absolute_path = Path(output_file_path).absolute()
 
-    with open(absolute_path, 'w') as file:
+    with open(absolute_path, "w") as file:
         file.write("WEBVTT\n\n")
         for seg in segments:
-            file.write(f"{to_timestamp(seg.t0, separator='.')} --> {to_timestamp(seg.t1, separator='.')}\n")
+            file.write(
+                f"{to_timestamp(seg.t0, separator='.')} --> {to_timestamp(seg.t1, separator='.')}\n"
+            )
             file.write(f"{seg.text}\n\n")
     return absolute_path
 
@@ -145,16 +154,18 @@ def output_srt(segments: list, output_file_path: str) -> str:
 
     :return: Absolute path of the file
     """
-    if not output_file_path.endswith('.srt'):
-        output_file_path = output_file_path + '.srt'
+    if not output_file_path.endswith(".srt"):
+        output_file_path = output_file_path + ".srt"
 
     absolute_path = Path(output_file_path).absolute()
 
-    with open(absolute_path, 'w') as file:
+    with open(absolute_path, "w") as file:
         for i in range(len(segments)):
             seg = segments[i]
             file.write(f"{i+1}\n")
-            file.write(f"{to_timestamp(seg.t0, separator=',')} --> {to_timestamp(seg.t1, separator=',')}\n")
+            file.write(
+                f"{to_timestamp(seg.t0, separator=',')} --> {to_timestamp(seg.t1, separator=',')}\n"
+            )
             file.write(f"{seg.text}\n\n")
     return absolute_path
 
@@ -168,12 +179,12 @@ def output_csv(segments: list, output_file_path: str) -> str:
 
     :return: Absolute path of the file
     """
-    if not output_file_path.endswith('.csv'):
-        output_file_path = output_file_path + '.csv'
+    if not output_file_path.endswith(".csv"):
+        output_file_path = output_file_path + ".csv"
 
     absolute_path = Path(output_file_path).absolute()
 
-    with open(absolute_path, 'w') as file:
+    with open(absolute_path, "w") as file:
         for seg in segments:
-            file.write(f"{10 * seg.t0}, {10 * seg.t1}, \"{seg.text}\"\n")
+            file.write(f'{10 * seg.t0}, {10 * seg.t1}, "{seg.text}"\n')
     return absolute_path
