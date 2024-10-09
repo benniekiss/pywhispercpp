@@ -1,3 +1,39 @@
+[project]
+name = "pywhispercpp"
+version = "1.2.0"
+description = "Python bindings for whisper.cpp"
+authors = [
+    { name = "abdeladim-s" }
+]
+license = { text = "MIT License" }
+dependencies = [
+  "numpy~=2.0.0",
+  "sounddevice~=0.4.6",
+  "webrtcvad~=2.0.10",
+  "requests~=2.28.2",
+  "tqdm~=4.65.0",
+  "platformdirs~=3.1.1",
+]
+readme = "README.md"
+requires-python = ">= 3.10"
+
+[project.urls]
+Documentation = "https://abdeladim-s.github.io/pywhispercpp/"
+Source = "https://github.com/abdeladim-s/pywhispercpp"
+Tracker = "https://github.com/abdeladim-s/pywhispercpp/issues"
+
+[project.optional-dependencies]
+examples = [
+  "sounddevice",
+  "webrtcvad"
+]
+
+[project.scripts]
+pwcpp = "pywhispercpp.examples.main:main"
+pwcpp-assistant = "pywhispercpp.examples.assistant:_main"
+pwcpp-livestream = "pywhispercpp.examples.livestream:_main"
+pwcpp-recording = "pywhispercpp.examples.recording:_main"
+
 [build-system]
 requires = [
     "setuptools>=42",
@@ -7,9 +43,17 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.setuptools.package-data]
+pywhispercpp = ["lib/*"]
+
 [tool.mypy]
 files = "setup.py"
-python_version = "3.8"
+python_version = "3.10"
 strict = true
 show_error_codes = true
 enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
@@ -18,7 +62,6 @@ warn_unreachable = true
 [[tool.mypy.overrides]]
 module = ["ninja"]
 ignore_missing_imports = true
-
 
 [tool.pytest.ini_options]
 minversion = "6.0"

@@ -5,7 +5,7 @@ import sys
 from glob import glob
 from pathlib import Path
 
-from setuptools import Extension, setup, find_packages
+from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
 
 # Convert distutils Windows platform specifiers to CMake -A arguments
@@ -117,7 +117,7 @@ class CMakeBuild(build_ext):
             build_temp.mkdir(parents=True)
 
         for key, value in os.environ.items():
-            cmake_args.append(f'-D{key}={value}')
+            cmake_args.append(f"-D{key}={value}")
 
         subprocess.run(
             ["cmake", ext.sourcedir, *cmake_args], cwd=build_temp, check=True
@@ -133,18 +133,21 @@ class CMakeBuild(build_ext):
         # Copy the shared library to the lib folder
         ext_fullpath = Path.cwd() / self.get_ext_fullpath(self.extensions[0].name)  # type: ignore[no-untyped-call]
         extdir = ext_fullpath.parent.resolve()
-        so_files = os.path.join(extdir, '*.so*')
-        dylib_files = os.path.join(extdir, '*.dylib')
+        so_files = os.path.join(extdir, "*.so*")
+        dylib_files = os.path.join(extdir, "*.dylib")
         cfg = "Debug" if self.debug else "Release"
-        dll_files = os.path.join(self.build_temp, '_pywhispercpp', 'bin', cfg, "*.dll")
-        shared_libs =  glob(so_files) + glob(dll_files) + glob(dylib_files)
-        shared_libs = [f for f in shared_libs if not Path(f).name.startswith("_")] # exclude the extension itself
-        dest_folder = Path.cwd() / 'pywhispercpp' / 'lib'
+        dll_files = os.path.join(self.build_temp, "_pywhispercpp", "bin", cfg, "*.dll")
+        shared_libs = glob(so_files) + glob(dll_files) + glob(dylib_files)
+        shared_libs = [
+            f for f in shared_libs if not Path(f).name.startswith("_")
+        ]  # exclude the extension itself
+        dest_folder = Path.cwd() / "pywhispercpp" / "lib"
         if not dest_folder.resolve().exists():
             dest_folder.mkdir(parents=True)
         for file_path in shared_libs:
             filename = os.path.basename(file_path)
             self.copy_file(file_path, (dest_folder / filename).resolve())
+
 
 # read the contents of your README file
 this_directory = Path(__file__).parent
@@ -153,33 +156,8 @@ long_description = (this_directory / "README.md").read_text()
 # The information here can also be placed in setup.cfg - better separation of
 # logic and declaration, and simpler if you include description/version in a file.
 setup(
-    name="pywhispercpp",
-    version="1.2.0",
-    author="abdeladim-s",
-    description="Python bindings for whisper.cpp",
-    long_description=long_description,
     ext_modules=[CMakeExtension("_pywhispercpp")],
     cmdclass={"build_ext": CMakeBuild},
-    zip_safe=False,
-    # extras_require={"test": ["pytest>=6.0"]},
-    python_requires=">=3.8",
-    packages=find_packages('.'),
-    package_dir={'': '.'},
-    include_package_data=True,
-    package_data={'pywhispercpp': ['lib/*']},
+    long_description=long_description,
     long_description_content_type="text/markdown",
-    license='MIT',
-    entry_points={
-        'console_scripts': ['pwcpp=pywhispercpp.examples.main:main',
-                            'pwcpp-assistant=pywhispercpp.examples.assistant:_main',
-                            'pwcpp-livestream=pywhispercpp.examples.livestream:_main',
-                            'pwcpp-recording=pywhispercpp.examples.recording:_main']
-    },
-    project_urls={
-        'Documentation': 'https://abdeladim-s.github.io/pywhispercpp/',
-        'Source': 'https://github.com/abdeladim-s/pywhispercpp',
-        'Tracker': 'https://github.com/abdeladim-s/pywhispercpp/issues',
-    },
-    install_requires=['numpy', "requests", "tqdm", "platformdirs"],
-    extras_require={"examples": ["sounddevice", "webrtcvad"]},
 )

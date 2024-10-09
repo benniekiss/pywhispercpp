@@ -1,4 +1,3 @@
-import importlib.metadata
 import logging
 import os
 import shutil
@@ -14,11 +13,6 @@ import numpy as np
 import pywhispercpp.constants as constants
 import pywhispercpp.utils as utils
 from pywhispercpp._logger import set_log_level
-
-__author__ = "abdeladim-s"
-__copyright__ = "Copyright 2023, "
-__license__ = "MIT"
-__version__ = importlib.metadata.version("pywhispercpp")
 
 
 class Segment:
