@@ -7,6 +7,7 @@ authors = [
 ]
 license = { text = "MIT License" }
 dependencies = [
+  "av~=13.1.0",
   "numpy~=2.0.0",
   "sounddevice~=0.4.6",
   "webrtcvad~=2.0.10",
