@@ -1,39 +1,37 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 """
 This module contains a simple Python API on-top of the C-style
 [whisper.cpp](https://github.com/ggerganov/whisper.cpp) API.
 """
-import io
+
 import importlib.metadata
+import io
 import logging
-import shutil
 from pathlib import Path
 from time import time
-from typing import Union, Callable, List
+from typing import Callable
+
 import _pywhispercpp as pw
 import numpy as np
-from pywhispercpp._logger import set_log_level
-import pywhispercpp.utils as utils
-import pywhispercpp.constants as constants
-import subprocess
-import os
-import tempfile
 
+import pywhispercpp.constants as constants
+import pywhispercpp.utils as utils
 
 __author__ = "abdeladim-s"
 __copyright__ = "Copyright 2023, "
 __license__ = "MIT"
-__version__ = importlib.metadata.version('pywhispercpp')
+__version__ = importlib.metadata.version("pywhispercpp")
 
 
 logger = logging.getLogger(__name__)
+
 
 class Segment:
     """
     A small class representing a transcription segment
     """
+
     def __init__(self, t0: int, t1: int, text: str):
         """
         :param t0: start time
@@ -66,11 +64,13 @@ class Model:
 
     _new_segment_callback = None
 
-    def __init__(self,
-                 model: str = 'tiny',
-                 models_dir: str = None,
-                 params_sampling_strategy: int = 0,
-                 **params):
+    def __init__(
+        self,
+        model: str = "tiny",
+        models_dir: str | None = None,
+        params_sampling_strategy: int = 0,
+        **params,
+    ):
         """
         :param model: The name of the model, one of the [AVAILABLE_MODELS](/pywhispercpp/#pywhispercpp.constants.AVAILABLE_MODELS),
                         (default to `tiny`), or a direct path to a `ggml` model.
@@ -85,19 +85,24 @@ class Model:
         else:
             self.model_path = utils.download_model(model, models_dir)
         self._ctx = None
-        self._sampling_strategy = pw.whisper_sampling_strategy.WHISPER_SAMPLING_GREEDY if params_sampling_strategy == 0 else \
-            pw.whisper_sampling_strategy.WHISPER_SAMPLING_BEAM_SEARCH
+        self._sampling_strategy = (
+            pw.whisper_sampling_strategy.WHISPER_SAMPLING_GREEDY
+            if params_sampling_strategy == 0
+            else pw.whisper_sampling_strategy.WHISPER_SAMPLING_BEAM_SEARCH
+        )
         self._params = pw.whisper_full_default_params(self._sampling_strategy)
         # init the model
         self._init_model()
         # assign params
         self._set_params(params)
 
-    def transcribe(self,
-                   media: Union[str, np.ndarray],
-                   n_processors: int = None,
-                   new_segment_callback: Callable[[Segment], None] = None,
-                   **params) -> List[Segment]:
+    def transcribe(
+        self,
+        media: str | np.ndarray,
+        n_processors: int | None = None,
+        new_segment_callback: Callable[[Segment], None] | None = None,
+        **params,
+    ) -> list[Segment]:
         """
         Transcribes the media provided as input and returns list of `Segment` objects.
         Accepts a media_file path (audio/video) or a raw numpy array.
@@ -116,7 +121,9 @@ class Model:
         elif isinstance(media, np.ndarray):
             audio = media
         else:
-            raise TypeError("media must be one of a string representing an existing filepath, a file-like object, or a np.ndarray")
+            raise TypeError(
+                "media must be one of a string representing an existing filepath, a file-like object, or a np.ndarray"
+            )
 
         # update params if any
         self._set_params(params)
@@ -124,7 +131,9 @@ class Model:
         # setting up callback
         if new_segment_callback:
             Model._new_segment_callback = new_segment_callback
-            pw.assign_new_segment_callback(self._params, Model.__call_new_segment_callback)
+            pw.assign_new_segment_callback(
+                self._params, Model.__call_new_segment_callback
+            )
 
         # run inference
         start_time = time()
@@ -135,7 +144,7 @@ class Model:
         return res
 
     @staticmethod
-    def _get_segments(ctx, start: int, end: int) -> List[Segment]:
+    def _get_segments(ctx, start: int, end: int) -> list[Segment]:
         """
         Helper function to get generated segments between `start` and `end`
 
@@ -145,7 +154,9 @@ class Model:
         :return: list of segments
         """
         n = pw.whisper_full_n_segments(ctx)
-        assert end <= n, f"{end} > {n}: `End` index must be less or equal than the total number of segments"
+        assert (
+            end <= n
+        ), f"{end} > {n}: `End` index must be less or equal than the total number of segments"
         res = []
         for i in range(start, end):
             t0 = pw.whisper_full_get_segment_t0(ctx, i)
@@ -162,7 +173,7 @@ class Model:
         """
         res = {}
         for param in dir(self._params):
-            if param.startswith('__'):
+            if param.startswith("__"):
                 continue
             res[param] = getattr(self._params, param)
         return res
@@ -221,7 +232,9 @@ class Model:
         """
         logger.info("Initializing the model ...")
         self._ctx = pw.whisper_init_from_file(self.model_path)
-        self._params = pw.whisper_full_default_params(pw.whisper_sampling_strategy.WHISPER_SAMPLING_GREEDY)
+        self._params = pw.whisper_full_default_params(
+            pw.whisper_sampling_strategy.WHISPER_SAMPLING_GREEDY
+        )
 
     def _set_params(self, kwargs: dict) -> None:
         """
@@ -232,7 +245,7 @@ class Model:
         for param in kwargs:
             setattr(self._params, param, kwargs[param])
 
-    def _transcribe(self, audio: np.ndarray, n_processors: int = None):
+    def _transcribe(self, audio: np.ndarray, n_processors: int | None = None):
         """
         Private method to call the whisper.cpp/whisper_full function
 
@@ -241,7 +254,9 @@ class Model:
         :return:
         """
         if n_processors:
-            pw.whisper_full_parallel(self._ctx, self._params, audio, audio.size, n_processors)
+            pw.whisper_full_parallel(
+                self._ctx, self._params, audio, audio.size, n_processors
+            )
         else:
             pw.whisper_full(self._ctx, self._params, audio, audio.size)
         n = pw.whisper_full_n_segments(self._ctx)
@@ -281,5 +296,3 @@ class Model:
         :return: None
         """
         pw.whisper_free(self._ctx)
-
-
