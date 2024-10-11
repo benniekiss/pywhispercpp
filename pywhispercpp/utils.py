@@ -194,7 +194,9 @@ def media_to_array(
             rate=16_000,
             layout="mono",
         )
-        for frame in container.decode(audio=0):
+        a_stream = container.streams.best("audio")
+
+        for frame in container.decode(a_stream):
             new_frames = resampler.resample(frame)
             for f in new_frames:
                 buffer.append(f.to_ndarray())
