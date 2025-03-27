@@ -139,7 +139,7 @@ PARAMS_SCHEMA = {  # as exactly presented in whisper.cpp
     },
     'max_len': {
             'type': int,
-            'description': "max segment length in characters",
+            'description': "max segment length in characters, note: token_timestamps needs to be set to True for this to work",
             'options': None,
             'default': 0
     },
