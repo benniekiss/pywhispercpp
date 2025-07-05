@@ -1,6 +1,6 @@
 [project]
 name = "pywhispercpp"
-version = "1.3.4"
+dynamic = ["version"]
 description = "Python bindings for whisper.cpp"
 authors = [
   { name = "absadiki" }
@@ -39,6 +39,7 @@ pwcpp-gui = "pywhispercpp.examples.gui:_main"
 [build-system]
 requires = [
   "scikit-build-core>=0.11.5",
+  "setuptools-scm>=8",
   "pybind11",
 ]
 build-backend = "scikit_build_core.build"
@@ -48,6 +49,10 @@ minimum-version = "build-system.requires"
 cmake.build-type = "Release"
 wheel.packages = ["pywhispercpp"]
 sdist.include = ["version.txt", "pybind11/", "whisper.cpp/"]
+metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
+
+[tool.setuptools_scm]  # Section required
+version_file = "_version.py"
 
 [tool.mypy]
 python_version = "3.10"
