@@ -221,7 +221,7 @@ class Model:
 
         disable = not self.verbose
         with suppress_stdout_stderr(disable=disable):
-            self._ctx = pw.whisper_init_from_file(self.model_path)
+            self._ctx = pw.whisper_init_from_file_with_params(self.model_path)
 
     def _set_params(self, kwargs: dict) -> None:
         """
