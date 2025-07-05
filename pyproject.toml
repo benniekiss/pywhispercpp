@@ -1,17 +1,62 @@
+[project]
+name = "pywhispercpp"
+dynamic = ["version"]
+description = "Python bindings for whisper.cpp"
+authors = [
+  { name = "absadiki" }
+]
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+dependencies = [
+  "numpy",
+  "requests",
+  "tqdm",
+  "platformdirs",
+]
+
+[project.optional-dependencies]
+examples = [
+  "sounddevice",
+  "webrtcvad",
+]
+gui = [
+  "pyqt5"
+]
+
+[project.urls]
+Documentation = "https://absadiki.github.io/pywhispercpp/"
+Source = "https://github.com/absadiki/pywhispercpp"
+Tracker = "https://github.com/absadiki/pywhispercpp/issues"
+
+[project.scripts]
+pwcpp = "pywhispercpp.examples.main:main"
+pwcpp-assistant = "pywhispercpp.examples.assistant:_main"
+pwcpp-livestream = "pywhispercpp.examples.livestream:_main"
+pwcpp-recording = "pywhispercpp.examples.recording:_main"
+pwcpp-gui = "pywhispercpp.examples.gui:_main"
+
 [build-system]
 requires = [
-    "setuptools>=42",
-    "wheel",
-    "ninja",
-    "cmake>=3.12",
-    "repairwheel",
-    "setuptools-scm>=8"
+  "scikit-build-core>=0.11.5",
+  "setuptools-scm>=8",
+  "pybind11>=2.13.6",
 ]
-build-backend = "setuptools.build_meta"
+build-backend = "scikit_build_core.build"
+
+[tool.scikit-build]
+minimum-version = "build-system.requires"
+cmake.build-type = "Release"
+wheel.packages = ["pywhispercpp"]
+wheel.exclude = ["lib/**"]
+sdist.include = ["whisper.cpp/"]
+metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
+
+[tool.setuptools_scm]  # Section required
+version_file = "_version.py"
 
 [tool.mypy]
-files = "setup.py"
-python_version = "3.8"
+python_version = "3.10"
 strict = true
 show_error_codes = true
 enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
@@ -20,7 +65,6 @@ warn_unreachable = true
 [[tool.mypy.overrides]]
 module = ["ninja"]
 ignore_missing_imports = true
-
 
 [tool.pytest.ini_options]
 minversion = "6.0"
@@ -48,7 +92,4 @@ extend-select = [
 extend-ignore = [
   "E501",   # Line too long
 ]
-target-version = "py39"
-
-[tool.setuptools_scm]
-version_file = "_version.py"
+target-version = "py310"
