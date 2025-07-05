@@ -14,3 +14,38 @@ if(APPLE)
 elseif(UNIX)
     set_target_properties(_pywhispercpp PROPERTIES INSTALL_RPATH "$ORIGIN")
 endif()
+
+install(TARGETS ggml
+  LIBRARY DESTINATION pywhispercpp
+  RUNTIME DESTINATION pywhispercpp
+  ARCHIVE DESTINATION pywhispercpp)
+
+install(TARGETS ggml-base
+  LIBRARY DESTINATION pywhispercpp
+  RUNTIME DESTINATION pywhispercpp
+  ARCHIVE DESTINATION pywhispercpp)
+
+install(TARGETS ggml-cpu
+  LIBRARY DESTINATION pywhispercpp
+  RUNTIME DESTINATION pywhispercpp
+  ARCHIVE DESTINATION pywhispercpp)
+
+install(TARGETS ggml-blas
+  LIBRARY DESTINATION pywhispercpp
+  RUNTIME DESTINATION pywhispercpp
+  ARCHIVE DESTINATION pywhispercpp)
+
+install(TARGETS ggml-metal
+  LIBRARY DESTINATION pywhispercpp
+  RUNTIME DESTINATION pywhispercpp
+  ARCHIVE DESTINATION pywhispercpp)
+
+install(TARGETS whisper
+  LIBRARY DESTINATION pywhispercpp
+  RUNTIME DESTINATION pywhispercpp
+  ARCHIVE DESTINATION pywhispercpp)
+
+install(TARGETS _pywhispercpp
+  LIBRARY DESTINATION pywhispercpp         # Unix
+  RUNTIME DESTINATION pywhispercpp         # Windows
+  ARCHIVE DESTINATION pywhispercpp)        # Static lib, if needed

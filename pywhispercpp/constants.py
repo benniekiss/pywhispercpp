@@ -7,7 +7,7 @@ Constants
 from pathlib import Path
 from typing import Tuple
 
-import _pywhispercpp as _pwcpp
+from pywhispercpp import _pywhispercpp as _pwcpp
 from platformdirs import user_data_dir
 
 

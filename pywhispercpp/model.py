@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 from time import time
 from typing import Union, Callable, List, TextIO, Tuple
-import _pywhispercpp as pw
+from pywhispercpp import _pywhispercpp as pw
 import numpy as np
 import pywhispercpp.utils as utils
 import pywhispercpp.constants as constants
@@ -242,7 +242,7 @@ class Model:
     def _transcribe(self, audio: np.ndarray, n_processors: int = None):
         """
         Private method to call the whisper.cpp/whisper_full function
-    
+
         :param audio: numpy array of audio data
         :param n_processors: if not None, it will run whisper.cpp/whisper_full_parallel with n_processors
         :return:
