@@ -7,7 +7,7 @@ authors = [
 ]
 readme = "README.md"
 license = { file = "LICENSE" }
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
   "numpy",
   "requests",
@@ -50,7 +50,7 @@ wheel.packages = ["pywhispercpp"]
 sdist.include = ["version.txt", "pybind11/", "whisper.cpp/"]
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.10"
 strict = true
 show_error_codes = true
 enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
@@ -86,5 +86,5 @@ extend-select = [
 extend-ignore = [
   "E501",   # Line too long
 ]
-target-version = "py39"
+target-version = "py310"
 
