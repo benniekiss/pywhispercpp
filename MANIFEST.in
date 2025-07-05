@@ -1,3 +1,0 @@
-include README.md LICENSE version.txt
-graft pybind11
-graft whisper.cpp
