@@ -40,7 +40,7 @@ pwcpp-gui = "pywhispercpp.examples.gui:_main"
 requires = [
   "scikit-build-core>=0.11.5",
   "setuptools-scm>=8",
-  "pybind11",
+  "pybind11>=2.13.6",
 ]
 build-backend = "scikit_build_core.build"
 
@@ -48,7 +48,7 @@ build-backend = "scikit_build_core.build"
 minimum-version = "build-system.requires"
 cmake.build-type = "Release"
 wheel.packages = ["pywhispercpp"]
-sdist.include = ["version.txt", "pybind11/", "whisper.cpp/"]
+sdist.include = ["whisper.cpp/"]
 metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
 
 [tool.setuptools_scm]  # Section required
