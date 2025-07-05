@@ -7,19 +7,21 @@ This module contains a simple Python API on-top of the C-style
 """
 import importlib.metadata
 import logging
-import shutil
-import sys
-from pathlib import Path
-from time import time
-from typing import Union, Callable, List, TextIO, Tuple
-from pywhispercpp.lib import _pywhispercpp as pw
-import numpy as np
-import pywhispercpp.utils as utils
-import pywhispercpp.constants as constants
-import subprocess
 import os
+import shutil
+import subprocess
 import tempfile
 import wave
+from pathlib import Path
+from time import time
+from typing import Callable, List, Tuple, Union
+
+import numpy as np
+
+import pywhispercpp.constants as constants
+import pywhispercpp.utils as utils
+from pywhispercpp.lib import _pywhispercpp as pw
+from pywhispercpp.logging import suppress_stdout_stderr
 
 __author__ = "absadiki"
 __copyright__ = "Copyright 2023, "
@@ -70,7 +72,7 @@ class Model:
                  model: str = 'tiny',
                  models_dir: str = None,
                  params_sampling_strategy: int = 0,
-                 redirect_whispercpp_logs_to: Union[bool, TextIO, str, None] = False,
+                 verbose: bool = True,
                  **params):
         """
         :param model: The name of the model, one of the [AVAILABLE_MODELS](/pywhispercpp/#pywhispercpp.constants.AVAILABLE_MODELS),
@@ -92,7 +94,7 @@ class Model:
         self._params = pw.whisper_full_default_params(self._sampling_strategy)
         # assign params
         self._set_params(params)
-        self.redirect_whispercpp_logs_to = redirect_whispercpp_logs_to
+        self.verbose = verbose
         # init the model
         self._init_model()
 
@@ -227,7 +229,9 @@ class Model:
         :return:
         """
         logger.info("Initializing the model ...")
-        with utils.redirect_stderr(to=self.redirect_whispercpp_logs_to):
+
+        disable = not self.verbose
+        with suppress_stdout_stderr(disable=disable):
             self._ctx = pw.whisper_init_from_file(self.model_path)
 
     def _set_params(self, kwargs: dict) -> None:

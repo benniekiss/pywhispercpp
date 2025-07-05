@@ -32,7 +32,7 @@ using namespace pybind11::literals; // to bring in the `_a` literal
 py::function py_new_segment_callback;
 py::function py_encoder_begin_callback;
 py::function py_logits_filter_callback;
-
+py::function py_whisper_log_callback;
 
 // whisper context wrapper, to solve the incomplete type issue
 // Thanks to https://github.com/pybind/pybind11/issues/2770
@@ -285,12 +285,12 @@ float whisper_full_get_token_p_wrapper(struct whisper_context_wrapper * ctx, int
 }
 
 class WhisperFullParamsWrapper : public whisper_full_params {
-    std::string initial_prompt_str;   
-    std::string suppress_regex_str;      
+    std::string initial_prompt_str;
+    std::string suppress_regex_str;
 public:
     py::function py_progress_callback;
     WhisperFullParamsWrapper(const whisper_full_params& params = whisper_full_params())
-        : whisper_full_params(params),  
+        : whisper_full_params(params),
         initial_prompt_str(params.initial_prompt ? params.initial_prompt : ""),
         suppress_regex_str(params.suppress_regex ? params.suppress_regex : "") {
         initial_prompt = initial_prompt_str.empty() ? nullptr : initial_prompt_str.c_str();
@@ -377,6 +377,18 @@ void assign_logits_filter_callback(struct whisper_full_params *params, py::funct
     py_logits_filter_callback = f;
 }
 
+void whisper_log_callback(enum ggml_log_level level, const char *text, void *user_data) {
+    if (py_whisper_log_callback) {
+        py::gil_scoped_acquire gil;
+        py_whisper_log_callback(static_cast<int>(level), std::string(text), py::none());
+    }
+}
+
+void assign_whisper_log_callback(py::function f) {
+    py_whisper_log_callback = f;
+    whisper_log_set(whisper_log_callback, nullptr);  // or replace nullptr if you want user_data
+}
+
 py::dict get_greedy(whisper_full_params * params){
     py::dict d("best_of"_a=params->greedy.best_of);
     return d;
@@ -426,7 +438,6 @@ PYBIND11_MODULE(_pywhispercpp, m) {
     DEF_RELEASE_GIL("whisper_init", &whisper_init_wrapper, "Various functions for loading a ggml whisper model.\n"
                                                 "Allocate (almost) all memory needed for the model.\n"
                                                 "Return NULL on failure");
-
 
     m.def("whisper_free", &whisper_free_wrapper, "Frees all memory allocated by the model.");
 
@@ -685,6 +696,7 @@ PYBIND11_MODULE(_pywhispercpp, m) {
     m.def("assign_logits_filter_callback", &assign_logits_filter_callback, "Assigns a logits_filter_callback, takes <whisper_full_params> instance and a callable function with the same parameters which are defined in the interface",
             py::arg("params"), py::arg("callback"));
 
+    m.def("assign_whisper_log_callback", &assign_whisper_log_callback, "Assign a logging callback for whisper_log_set(level: int, message: str, user_data: None)");
 
 #ifdef VERSION_INFO
     m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);
