@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 from time import time
 from typing import Union, Callable, List, TextIO, Tuple
-from pywhispercpp import _pywhispercpp as pw
+from pywhispercpp.lib import _pywhispercpp as pw
 import numpy as np
 import pywhispercpp.utils as utils
 import pywhispercpp.constants as constants

@@ -7,11 +7,11 @@ Constants
 from pathlib import Path
 from typing import Tuple
 
-from pywhispercpp import _pywhispercpp as _pwcpp
+from pywhispercpp.lib import _pywhispercpp as pw
 from platformdirs import user_data_dir
 
 
-WHISPER_SAMPLE_RATE = _pwcpp.WHISPER_SAMPLE_RATE
+WHISPER_SAMPLE_RATE = pw.WHISPER_SAMPLE_RATE
 # MODELS URL MODELS_BASE_URL+ '/' + MODELS_PREFIX_URL+'-'+MODEL_NAME+'.bin'
 # example = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin"
 MODELS_BASE_URL = "https://huggingface.co/ggerganov/whisper.cpp"
