@@ -10,44 +10,43 @@ pybind11_add_module(_pywhispercpp src/main.cpp)
 
 target_link_libraries(_pywhispercpp PRIVATE whisper)
 
-# Set rpath for shared libs
-if(APPLE)
-    set_target_properties(_pywhispercpp PROPERTIES INSTALL_RPATH "@loader_path")
-elseif(UNIX)
-    set_target_properties(_pywhispercpp PROPERTIES INSTALL_RPATH "$ORIGIN")
-endif()
+function(pywhispercpp_python_install_target target)
+    if(NOT TARGET ${target})
+        return()
+    endif()
 
-install(TARGETS ggml
-  LIBRARY DESTINATION pywhispercpp
-  RUNTIME DESTINATION pywhispercpp
-  ARCHIVE DESTINATION pywhispercpp)
+    install(
+        TARGETS ${target}
+        LIBRARY DESTINATION pywhispercpp/lib
+        RUNTIME DESTINATION pywhispercpp/lib
+        ARCHIVE DESTINATION pywhispercpp/lib
+        FRAMEWORK DESTINATION pywhispercpp/lib
+        RESOURCE DESTINATION pywhispercpp/lib
+    )
 
-install(TARGETS ggml-base
-  LIBRARY DESTINATION pywhispercpp
-  RUNTIME DESTINATION pywhispercpp
-  ARCHIVE DESTINATION pywhispercpp)
+    set_target_properties(${target} PROPERTIES
+        INSTALL_RPATH "$ORIGIN"
+        BUILD_WITH_INSTALL_RPATH TRUE
+    )
+    if(UNIX)
+        if(APPLE)
+            set_target_properties(${target} PROPERTIES
+                INSTALL_RPATH "@loader_path"
+                BUILD_WITH_INSTALL_RPATH TRUE
+            )
+        else()
+            set_target_properties(${target} PROPERTIES
+                INSTALL_RPATH "$ORIGIN"
+                BUILD_WITH_INSTALL_RPATH TRUE
+            )
+        endif()
+    endif()
+endfunction()
 
-install(TARGETS ggml-cpu
-  LIBRARY DESTINATION pywhispercpp
-  RUNTIME DESTINATION pywhispercpp
-  ARCHIVE DESTINATION pywhispercpp)
-
-install(TARGETS ggml-blas
-  LIBRARY DESTINATION pywhispercpp
-  RUNTIME DESTINATION pywhispercpp
-  ARCHIVE DESTINATION pywhispercpp)
-
-install(TARGETS ggml-metal
-  LIBRARY DESTINATION pywhispercpp
-  RUNTIME DESTINATION pywhispercpp
-  ARCHIVE DESTINATION pywhispercpp)
-
-install(TARGETS whisper
-  LIBRARY DESTINATION pywhispercpp
-  RUNTIME DESTINATION pywhispercpp
-  ARCHIVE DESTINATION pywhispercpp)
-
-install(TARGETS _pywhispercpp
-  LIBRARY DESTINATION pywhispercpp         # Unix
-  RUNTIME DESTINATION pywhispercpp         # Windows
-  ARCHIVE DESTINATION pywhispercpp)        # Static lib, if needed
+pywhispercpp_python_install_target(ggml)
+pywhispercpp_python_install_target(ggml-base)
+pywhispercpp_python_install_target(ggml-cpu)
+pywhispercpp_python_install_target(ggml-blas)
+pywhispercpp_python_install_target(ggml-metal)
+pywhispercpp_python_install_target(whisper)
+pywhispercpp_python_install_target(_pywhispercpp)
