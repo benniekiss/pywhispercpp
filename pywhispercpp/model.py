@@ -1,7 +1,6 @@
 import logging
 from collections.abc import Callable
 from pathlib import Path
-from time import time
 
 import numpy as np
 
@@ -118,12 +117,8 @@ class Model:
                 self._params, Model.__call_new_segment_callback
             )
 
-        # run inference
-        start_time = time()
-        logger.info("Transcribing ...")
         res = self._transcribe(media, n_processors=n_processors)
-        end_time = time()
-        logger.info(f"Inference time: {end_time - start_time:.3f} s")
+
         return res
 
     @staticmethod
