@@ -62,7 +62,7 @@ class Model:
         :param models_dir: The directory where the models are stored, or where they will be downloaded if they don't
                             exist, default to [MODELS_DIR](/pywhispercpp/#pywhispercpp.constants.MODELS_DIR) <user_data_dir/pywhsipercpp/models>
         :param params_sampling_strategy: 0 -> GREEDY, else BEAM_SEARCH
-        :param redirect_whispercpp_logs_to: where to redirect the whisper.cpp logs, default to False (no redirection), accepts str file path, sys.stdout, sys.stderr, or use None to redirect to devnull
+        :param verbose: Print logs to stderr. Default to `True`
         :param params: keyword arguments for different whisper.cpp parameters,
                         see [PARAMS_SCHEMA](/pywhispercpp/#pywhispercpp.constants.PARAMS_SCHEMA)
         """
@@ -70,6 +70,7 @@ class Model:
             raise FileNotFoundError(f"Model, {model}, could not be found on disk.")
 
         self.model_path = model
+        self.verbose = verbose
 
         self._ctx = None
         self._sampling_strategy = (
@@ -80,7 +81,6 @@ class Model:
         self._params = pw.whisper_full_default_params(self._sampling_strategy)
         # assign params
         self._set_params(params)
-        self.verbose = verbose
         # init the model
         self._init_model()
 
