@@ -306,4 +306,7 @@ class Model:
         Free up resources
         :return: None
         """
+        if self._ctx is None:
+            return
         pw.whisper_free(self._ctx)
+        self._ctx = None
