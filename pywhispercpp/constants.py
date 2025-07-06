@@ -147,7 +147,7 @@ PARAMS_SCHEMA = {  # as exactly presented in whisper.cpp
         "options": None,
         "default": True,
     },
-    "suppress_non_speech_tokens": {
+    "suppress_nst": {
         "type": bool,
         "description": "common decoding parameters",
         "options": None,
