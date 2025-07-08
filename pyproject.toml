@@ -4,6 +4,7 @@ dynamic = ["version"]
 description = "Python bindings for whisper.cpp"
 authors = [
   { name = "absadiki" }
+  { name = "benniekiss" }
 ]
 readme = "README.md"
 license = "MIT"
@@ -13,16 +14,8 @@ dependencies = [
 ]
 
 [project.urls]
-Documentation = "https://absadiki.github.io/pywhispercpp/"
-Source = "https://github.com/absadiki/pywhispercpp"
-Tracker = "https://github.com/absadiki/pywhispercpp/issues"
-
-[project.scripts]
-pwcpp = "pywhispercpp.examples.main:main"
-pwcpp-assistant = "pywhispercpp.examples.assistant:_main"
-pwcpp-livestream = "pywhispercpp.examples.livestream:_main"
-pwcpp-recording = "pywhispercpp.examples.recording:_main"
-pwcpp-gui = "pywhispercpp.examples.gui:_main"
+Source = "https://github.com/benniekiss/pywhispercpp"
+Tracker = "https://github.com/benniekiss/pywhispercpp/issues"
 
 [build-system]
 requires = [
@@ -40,7 +33,7 @@ wheel.exclude = ["lib/**"]
 sdist.include = ["whisper.cpp/"]
 metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
 
-[tool.setuptools_scm]  # Section required
+[tool.setuptools_scm]
 version_file = "_version.py"
 
 [tool.mypy]
@@ -49,24 +42,6 @@ strict = true
 show_error_codes = true
 enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
 warn_unreachable = true
-
-[[tool.mypy.overrides]]
-module = ["ninja"]
-ignore_missing_imports = true
-
-[tool.pytest.ini_options]
-minversion = "6.0"
-addopts = ["-ra", "--showlocals", "--strict-markers", "--strict-config"]
-xfail_strict = true
-filterwarnings = ["error"]
-testpaths = ["tests"]
-
-[tool.cibuildwheel]
-#test-command = "pytest {project}/tests"
-#test-extras = ["test"]
-test-skip = ["*universal2:arm64"]
-# Setuptools bug causes collision between pypy and cpython artifacts
-before-build = "rm -rf {project}/build"
 
 [tool.ruff]
 extend-select = [
