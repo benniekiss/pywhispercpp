@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Callable
+from contextlib import ExitStack
 from pathlib import Path
 
 import numpy as np
@@ -84,6 +85,15 @@ class Model:
         # init the model
         self._init_model()
 
+        def free_model():
+            if self._ctx is None:
+                return
+            pw.whisper_free(self._ctx)
+            self._ctx = None
+
+        self._exit_stack = ExitStack()
+        self._exit_stack.callback(free_model)
+
     def transcribe(
         self,
         media: np.ndarray,
@@ -145,7 +155,7 @@ class Model:
             t1 = pw.whisper_full_get_segment_t1(ctx, i)
             bytes = pw.whisper_full_get_segment_text(ctx, i)
             text = bytes.decode("utf-8", errors="replace")
-            res.append(Segment(t0, t1, text.strip()))
+            res.append(Segment(t0, t1, text))
         return res
 
     def get_params(self) -> dict:
@@ -301,12 +311,12 @@ class Model:
         lang_probs = {langs[i]: probs[i] for i in range(lang_max_id)}
         return (langs[auto_detect], probs[auto_detect]), lang_probs
 
+    def close(self):
+        self._exit_stack.close()
+
     def __del__(self):
         """
         Free up resources
         :return: None
         """
-        if self._ctx is None:
-            return
-        pw.whisper_free(self._ctx)
-        self._ctx = None
+        self.close()
