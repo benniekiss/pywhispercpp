@@ -1,10 +1,10 @@
 [project]
 name = "pywhispercpp"
-dynamic = ["version"]
+version = "1.4.0"
 description = "Python bindings for whisper.cpp"
 authors = [
-  { name = "absadiki" }
-  { name = "benniekiss" }
+  { name = "absadiki" },
+  { name = "benniekiss" },
 ]
 readme = "README.md"
 license = "MIT"
@@ -20,8 +20,8 @@ Tracker = "https://github.com/benniekiss/pywhispercpp/issues"
 [build-system]
 requires = [
   "scikit-build-core>=0.11.5",
-  "setuptools-scm>=8",
   "pybind11>=2.13.6",
+  "libggml",
 ]
 build-backend = "scikit_build_core.build"
 
@@ -29,12 +29,11 @@ build-backend = "scikit_build_core.build"
 minimum-version = "build-system.requires"
 cmake.build-type = "Release"
 wheel.packages = ["pywhispercpp"]
-wheel.exclude = ["lib/**"]
+wheel.install-dir = "pywhispercpp"
 sdist.include = ["whisper.cpp/"]
-metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
 
-[tool.setuptools_scm]
-version_file = "_version.py"
+[tool.scikit-build.cmake.define]
+WHISPER_USE_SYSTEM_GGML = "ON"
 
 [tool.mypy]
 python_version = "3.10"
