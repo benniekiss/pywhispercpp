@@ -1,6 +1,6 @@
 [project]
 name = "pywhispercpp"
-version = "1.4.0"
+version = "1.4.1"
 description = "Python bindings for whisper.cpp"
 authors = [
   { name = "absadiki" },
