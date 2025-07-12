@@ -1,14 +1,30 @@
-cmake_minimum_required(VERSION 3.15)
-project(pywhispercpp LANGUAGES C CXX)
+cmake_minimum_required(VERSION 3.15...3.27)
+project(whispercpp LANGUAGES C CXX)
 
-set(PYBIND11_FINDPYTHON ON)
-find_package(pybind11 CONFIG REQUIRED)
-pybind11_add_module(_pywhispercpp src/main.cpp)
+if (CMAKE_VERSION VERSION_LESS 3.18)
+  set(DEV_MODULE Development)
+else()
+  set(DEV_MODULE Development.Module)
+endif()
 
-add_subdirectory(whisper.cpp)
-target_link_libraries(_pywhispercpp PRIVATE whisper)
+find_package(Python 3.8 COMPONENTS Interpreter ${DEV_MODULE} REQUIRED)
 
-function(pywhispercpp_python_install_target target)
+if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+endif()
+
+execute_process(
+  COMMAND "${Python_EXECUTABLE}" -m nanobind --cmake_dir
+  OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE nanobind_ROOT)
+find_package(nanobind CONFIG REQUIRED)
+
+nanobind_add_module(whispercpp src/main.cpp)
+
+add_subdirectory(vendor/whisper.cpp)
+target_link_libraries(whispercpp PRIVATE whisper)
+
+function(whispercpp_python_install_target target)
     if(NOT TARGET ${target})
         return()
     endif()
@@ -35,5 +51,5 @@ function(pywhispercpp_python_install_target target)
     endif()
 endfunction()
 
-pywhispercpp_python_install_target(whisper)
-pywhispercpp_python_install_target(_pywhispercpp)
+whispercpp_python_install_target(whisper)
+whispercpp_python_install_target(whispercpp)

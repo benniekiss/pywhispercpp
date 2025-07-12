@@ -1,9 +1,8 @@
 [project]
-name = "pywhispercpp"
-version = "1.4.1"
+name = "whispercpp-python"
+version = "0.1.0"
 description = "Python bindings for whisper.cpp"
 authors = [
-  { name = "absadiki" },
   { name = "benniekiss" },
 ]
 readme = "README.md"
@@ -15,13 +14,13 @@ dependencies = [
 ]
 
 [project.urls]
-Source = "https://github.com/benniekiss/pywhispercpp"
-Tracker = "https://github.com/benniekiss/pywhispercpp/issues"
+Source = "https://github.com/benniekiss/whispercpp-python"
+Tracker = "https://github.com/benniekiss/whispercpp-python/issues"
 
 [build-system]
 requires = [
   "scikit-build-core>=0.11.5",
-  "pybind11>=2.13.6",
+  "nanobind>=2.7.0",
   "libggml-python",
 ]
 build-backend = "scikit_build_core.build"
@@ -29,8 +28,8 @@ build-backend = "scikit_build_core.build"
 [tool.scikit-build]
 minimum-version = "build-system.requires"
 cmake.build-type = "Release"
-wheel.packages = ["pywhispercpp"]
-wheel.install-dir = "pywhispercpp"
+wheel.packages = ["whispercpp-python"]
+wheel.install-dir = "whispercpp-python"
 sdist.include = ["whisper.cpp/"]
 
 [tool.scikit-build.cmake.define]

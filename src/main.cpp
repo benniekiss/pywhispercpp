@@ -1,38 +1,15 @@
-/**
- ********************************************************************************
- * @file    main.cpp
- * @author  [absadiki](https://github.com/absadiki)
- * @date    2023
- * @brief   Python bindings for [whisper.cpp](https://github.com/ggerganov/whisper.cpp) using Pybind11
- *
- * @par
- * COPYRIGHT NOTICE: (c) 2023.  All rights reserved.
- ********************************************************************************
- */
-
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
-#include <pybind11/functional.h>
-#include <pybind11/numpy.h>
-
+#include <nanobind/nanobind.h>
+#include <nanobind/ndarray.h>
 #include "whisper.h"
 
-
-#define STRINGIFY(x) #x
-#define MACRO_STRINGIFY(x) STRINGIFY(x)
-
-#define DEF_RELEASE_GIL(name, fn, doc) \
-    m.def(name, fn, doc, py::call_guard<py::gil_scoped_release>())
+namespace nb = nanobind;
+using namespace nb::literals;
 
 
-namespace py = pybind11;
-using namespace pybind11::literals; // to bring in the `_a` literal
-
-
-py::function py_new_segment_callback;
-py::function py_encoder_begin_callback;
-py::function py_logits_filter_callback;
-py::function py_whisper_log_callback;
+nb::function py_new_segment_callback;
+nb::function py_encoder_begin_callback;
+nb::function py_logits_filter_callback;
+nb::function py_whisper_log_callback;
 
 // whisper context wrapper, to solve the incomplete type issue
 // Thanks to https://github.com/pybind/pybind11/issues/2770
@@ -394,9 +371,9 @@ py::dict get_greedy(whisper_full_params * params){
     return d;
 }
 
-PYBIND11_MODULE(_pywhispercpp, m) {
+NB_MODULE(whispercpp, m) {
     m.doc() = R"pbdoc(
-        Pywhispercpp: Python binding to whisper.cpp
+        whispercpp: Python binding to whisper.cpp
         -----------------------
 
         .. currentmodule:: _whispercpp
