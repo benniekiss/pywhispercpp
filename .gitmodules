@@ -2,3 +2,7 @@
 	path = whisper.cpp
 	url = https://github.com/ggml-org/whisper.cpp
 	branch = v1.7.6
+[submodule "vendor/whisper.cpp"]
+	path = vendor/whisper.cpp
+	url = https://github.com/ggml-org/whisper.cpp
+	branch = 1.7.6
