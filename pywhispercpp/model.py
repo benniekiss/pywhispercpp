@@ -244,7 +244,7 @@ class Model:
         """
         n = pw.whisper_lang_max_id()
         res = []
-        for i in range(n):
+        for i in range(n+1):
             res.append(pw.whisper_lang_str(i))
         return res
 
