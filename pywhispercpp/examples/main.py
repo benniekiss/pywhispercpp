@@ -48,26 +48,38 @@ def run(args):
     logging.info(f"System info: n_threads = {m.get_params()['n_threads']} | Processors = {args.processors} "
                  f"| {m.system_info()}")
     for file in args.media_file:
-        logging.info(f"Processing file {file} ...")
-        segs = m.transcribe(file, n_processors=int(args.processors) if args.processors else None)
-        m.print_timings()
-        # output stuff
-        if args.output_txt:
-            logging.info(f"Saving result as a txt file ...")
-            txt_file = utils.output_txt(segs, file)
-            logging.info(f"txt file saved to {txt_file}")
-        if args.output_vtt:
-            logging.info(f"Saving results as a vtt file ...")
-            vtt_file = utils.output_vtt(segs, file)
-            logging.info(f"vtt file saved to {vtt_file}")
-        if args.output_srt:
-            logging.info(f"Saving results as a srt file ...")
-            srt_file = utils.output_srt(segs, file)
-            logging.info(f"srt file saved to {srt_file}")
-        if args.output_csv:
-            logging.info(f"Saving results as a csv file ...")
-            csv_file = utils.output_csv(segs, file)
-            logging.info(f"csv file saved to {csv_file}")
+        segs = []
+        try:
+            logging.info(f"Processing file {file} ...")
+            m.transcribe(file,
+                         n_processors=int(args.processors) if args.processors else None,
+                         new_segment_callback=lambda seg: segs.append(seg)
+                         )
+            m.print_timings()
+        except KeyboardInterrupt:
+            logging.info("Transcription manually stopped")
+            break
+        except Exception as e:
+            logging.error(f"Error while processing file {file}: {e}")
+        finally:
+            if segs:
+                # output stuff
+                if args.output_txt:
+                    logging.info(f"Saving result as a txt file ...")
+                    txt_file = utils.output_txt(segs, file)
+                    logging.info(f"txt file saved to {txt_file}")
+                if args.output_vtt:
+                    logging.info(f"Saving results as a vtt file ...")
+                    vtt_file = utils.output_vtt(segs, file)
+                    logging.info(f"vtt file saved to {vtt_file}")
+                if args.output_srt:
+                    logging.info(f"Saving results as a srt file ...")
+                    srt_file = utils.output_srt(segs, file)
+                    logging.info(f"srt file saved to {srt_file}")
+                if args.output_csv:
+                    logging.info(f"Saving results as a csv file ...")
+                    csv_file = utils.output_csv(segs, file)
+                    logging.info(f"csv file saved to {csv_file}")
 
 
 def main():
