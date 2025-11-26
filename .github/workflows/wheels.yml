@@ -56,7 +56,8 @@ jobs:
         CIBW_ARCHS: auto
          # for windows setup.py repairwheel step should solve it
         CIBW_SKIP: pp* cp38-*
-        CIBW_ENVIRONMENT: ${{ contains(matrix.os, 'arm') && 'CMAKE_ARGS="-DGGML_NATIVE=OFF -DGGML_CPU_ARM_ARCH=armv8-a"' || '' }}
+        # Whisper.cpp tries to use BMI2 on 32 bit Windows, so disable BMI2 when building on Windows to avoid that bug. See https://github.com/ggml-org/whisper.cpp/pull/3543
+        CIBW_ENVIRONMENT: CMAKE_ARGS="${{ contains(matrix.os, 'arm') && '-DGGML_NATIVE=OFF -DGGML_CPU_ARM_ARCH=armv8-a' || ''}} ${{ contains(matrix.os, 'windows') && '-DGGML_BMI2=OFF' || '' }}"
 
     - name: Verify clean directory
       run: git diff --exit-code
