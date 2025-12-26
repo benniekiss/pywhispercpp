@@ -133,6 +133,12 @@ const char * whisper_token_to_str_wrapper(struct whisper_context_wrapper * ctx_w
     return whisper_token_to_str(ctx_w->ptr, token);
 };
 
+py::bytes whisper_token_to_bytes_wrapper(struct whisper_context_wrapper * ctx_w, whisper_token token){
+    const char* str = whisper_token_to_str(ctx_w->ptr, token);
+    size_t l = strlen(str);
+    return py::bytes(str, l);
+}
+
 whisper_token whisper_token_eot_wrapper(struct whisper_context_wrapper * ctx_w){
     return whisper_token_eot(ctx_w->ptr);
 }
@@ -499,6 +505,7 @@ PYBIND11_MODULE(_pywhispercpp, m) {
 
 
     m.def("whisper_token_to_str", &whisper_token_to_str_wrapper, "whisper_token_to_str");
+    m.def("whisper_token_to_bytes", &whisper_token_to_bytes_wrapper, "whisper_token_to_bytes");
     m.def("whisper_token_eot", &whisper_token_eot_wrapper, "whisper_token_eot");
     m.def("whisper_token_sot", &whisper_token_sot_wrapper, "whisper_token_sot");
     m.def("whisper_token_prev", &whisper_token_prev_wrapper);
