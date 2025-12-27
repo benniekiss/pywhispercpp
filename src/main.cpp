@@ -339,6 +339,7 @@ public:
 };
 
 */
+
 struct WhisperFullParamsWrapper : public whisper_full_params {
   std::string initial_prompt_str;
   std::string suppress_regex_str;
