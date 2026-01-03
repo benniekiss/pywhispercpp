@@ -290,12 +290,6 @@ float whisper_full_get_token_p_wrapper(struct whisper_context_wrapper * ctx, int
     return whisper_full_get_token_p(ctx->ptr, i_segment, i_token);
 }
 
-int whisper_ctx_init_openvino_encoder_wrapper(struct whisper_context_wrapper * ctx, const char * model_path,
-                    const char * device,
-                    const char * cache_dir){
-    return whisper_ctx_init_openvino_encoder(ctx->ptr, model_path, device, cache_dir);
-}
-
 struct WhisperFullParamsWrapper : public whisper_full_params {
   std::string initial_prompt_str;
   std::string suppress_regex_str;
