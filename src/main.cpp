@@ -10,37 +10,30 @@
  ********************************************************************************
  */
 
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
-#include <pybind11/functional.h>
-#include <pybind11/numpy.h>
-
+#include <nanobind/nanobind.h>
+#include <nanobind/ndarray.h>
+#include <nanobind/stl/string.h>
+#include <nanobind/stl/vector.h>
+#include <cstring>
+#include <sstream>
 #include "whisper.h"
 
+namespace nb = nanobind;
+using namespace nb::literals;
 
 #define STRINGIFY(x) #x
 #define MACRO_STRINGIFY(x) STRINGIFY(x)
 
-#define DEF_RELEASE_GIL(name, fn, doc) \
-    m.def(name, fn, doc, py::call_guard<py::gil_scoped_release>())
-
-
-namespace py = pybind11;
-using namespace pybind11::literals; // to bring in the `_a` literal
-
-
-py::function py_new_segment_callback;
-py::function py_encoder_begin_callback;
-py::function py_logits_filter_callback;
-py::function py_whisper_log_callback;
+nb::object py_new_segment_callback;
+nb::object py_encoder_begin_callback;
+nb::object py_logits_filter_callback;
+nb::object py_whisper_log_callback;
 
 // whisper context wrapper, to solve the incomplete type issue
 // Thanks to https://github.com/pybind/pybind11/issues/2770
 struct whisper_context_wrapper {
     whisper_context* ptr;
-
 };
-
 
 // struct inside params
 struct greedy{
@@ -51,7 +44,6 @@ struct beam_search{
     int beam_size;
     float patience;
 };
-
 
 struct whisper_model_loader_wrapper {
     whisper_model_loader* ptr;
@@ -84,25 +76,22 @@ void whisper_free_wrapper(struct whisper_context_wrapper * ctx_w){
 };
 
 int whisper_pcm_to_mel_wrapper(
-        struct whisper_context_wrapper * ctx,
-        py::array_t<float> samples,
-        int   n_samples,
-        int   n_threads){
-    py::buffer_info buf = samples.request();
-    float *samples_ptr = static_cast<float *>(buf.ptr);
-    return whisper_pcm_to_mel(ctx->ptr, samples_ptr, n_samples, n_threads);
-};
+    whisper_context_wrapper * ctx,
+    nb::ndarray<nb::numpy, float, nb::shape<-1>, nb::c_contig> samples,
+    int n_samples,
+    int n_threads) {
+
+    return whisper_pcm_to_mel(ctx->ptr, samples.data(), n_samples, n_threads);
+}
 
 int whisper_set_mel_wrapper(
-        struct whisper_context_wrapper * ctx,
-        py::array_t<float> data,
-        int   n_len,
-        int   n_mel){
-    py::buffer_info buf = data.request();
-    float *data_ptr = static_cast<float *>(buf.ptr);
-    return whisper_set_mel(ctx->ptr, data_ptr, n_len, n_mel);
+    whisper_context_wrapper * ctx,
+    nb::ndarray<nb::numpy, float, nb::shape<-1>, nb::c_contig> data,
+    int n_len,
+    int n_mel) {
 
-};
+    return whisper_set_mel(ctx->ptr, data.data(), n_len, n_mel);
+}
 
 int whisper_n_len_wrapper(struct whisper_context_wrapper * ctx_w){
     return whisper_n_len(ctx_w->ptr);
@@ -125,18 +114,30 @@ int whisper_is_multilingual_wrapper(struct whisper_context_wrapper * ctx_w){
 }
 
 
-float * whisper_get_logits_wrapper(struct whisper_context_wrapper * ctx_w){
-    return whisper_get_logits(ctx_w->ptr);
-};
+nb::ndarray<nb::numpy, float> whisper_get_logits_wrapper(
+    whisper_context_wrapper * ctx_w,
+    size_t n) {
 
-const char * whisper_token_to_str_wrapper(struct whisper_context_wrapper * ctx_w, whisper_token token){
-    return whisper_token_to_str(ctx_w->ptr, token);
-};
+    float *ptr = whisper_get_logits(ctx_w->ptr);
+    return nb::ndarray<nb::numpy, float>(
+        ptr,
+        { n },
+        nb::handle()   // no owner; whisper owns memory
+    );
+}
 
-py::bytes whisper_token_to_bytes_wrapper(struct whisper_context_wrapper * ctx_w, whisper_token token){
+nb::bytes whisper_token_to_str_wrapper(
+    whisper_context_wrapper * ctx_w,
+    whisper_token token) {
+
+    const char *str = whisper_token_to_str(ctx_w->ptr, token);
+    return str ? nb::bytes(str, strlen(str)) : nb::bytes();
+}
+
+nb::bytes whisper_token_to_bytes_wrapper(struct whisper_context_wrapper * ctx_w, whisper_token token){
     const char* str = whisper_token_to_str(ctx_w->ptr, token);
     size_t l = strlen(str);
-    return py::bytes(str, l);
+    return nb::bytes(str, l);
 }
 
 whisper_token whisper_token_eot_wrapper(struct whisper_context_wrapper * ctx_w){
@@ -187,6 +188,7 @@ int whisper_encode_wrapper(
         struct whisper_context_wrapper * ctx,
         int   offset,
         int   n_threads){
+
     return whisper_encode(ctx->ptr, offset, n_threads);
 }
 
@@ -209,45 +211,36 @@ int whisper_tokenize_wrapper(
 };
 
 int whisper_lang_auto_detect_wrapper(
-        struct whisper_context_wrapper * ctx,
-        int   offset_ms,
-        int   n_threads,
-        py::array_t<float> lang_probs){
+    whisper_context_wrapper * ctx,
+    int offset_ms,
+    int n_threads,
+    nb::ndarray<nb::numpy, float, nb::shape<-1>, nb::c_contig> lang_probs) {
 
-    py::buffer_info buf = lang_probs.request();
-    float *lang_probs_ptr = static_cast<float *>(buf.ptr);
-    return whisper_lang_auto_detect(ctx->ptr, offset_ms, n_threads, lang_probs_ptr);
-
+    return whisper_lang_auto_detect(
+        ctx->ptr, offset_ms, n_threads, lang_probs.data());
 }
 
 int whisper_full_wrapper(
-        struct whisper_context_wrapper * ctx_w,
-        struct whisper_full_params   params,
-        py::array_t<float> samples,
-        int   n_samples){
-    py::buffer_info buf = samples.request();
-    float *samples_ptr = static_cast<float *>(buf.ptr);
+    whisper_context_wrapper * ctx_w,
+    whisper_full_params params,
+    nb::ndarray<nb::numpy, float, nb::shape<-1>, nb::c_contig> samples,
+    int n_samples) {
 
-    py::gil_scoped_release release;
-    return whisper_full(ctx_w->ptr, params, samples_ptr, n_samples);
+    return whisper_full(ctx_w->ptr, params, samples.data(), n_samples);
 }
 
 int whisper_full_parallel_wrapper(
-        struct whisper_context_wrapper * ctx_w,
-        struct whisper_full_params   params,
-        py::array_t<float> samples,
-        int   n_samples,
-        int n_processors){
-    py::buffer_info buf = samples.request();
-    float *samples_ptr = static_cast<float *>(buf.ptr);
+    whisper_context_wrapper * ctx_w,
+    whisper_full_params params,
+    nb::ndarray<nb::numpy, float, nb::shape<-1>, nb::c_contig> samples,
+    int n_samples,
+    int n_processors) {
 
-    py::gil_scoped_release release;
-    return whisper_full_parallel(ctx_w->ptr, params, samples_ptr, n_samples, n_processors);
+    return whisper_full_parallel(
+        ctx_w->ptr, params, samples.data(), n_samples, n_processors);
 }
 
-
 int whisper_full_n_segments_wrapper(struct whisper_context_wrapper * ctx){
-    py::gil_scoped_release release;
     return whisper_full_n_segments(ctx->ptr);
 }
 
@@ -264,18 +257,23 @@ int64_t whisper_full_get_segment_t1_wrapper(struct whisper_context_wrapper * ctx
 }
 
 // https://pybind11.readthedocs.io/en/stable/advanced/cast/strings.html
-const py::bytes whisper_full_get_segment_text_wrapper(struct whisper_context_wrapper * ctx, int i_segment){
+const nb::bytes whisper_full_get_segment_text_wrapper(struct whisper_context_wrapper * ctx, int i_segment){
     const char * c_array = whisper_full_get_segment_text(ctx->ptr, i_segment);
     size_t length = strlen(c_array); // Determine the length of the array
-    return py::bytes(c_array, length); // Return the data without transcoding
+    return nb::bytes(c_array, length); // Return the data without transcoding
 };
 
 int whisper_full_n_tokens_wrapper(struct whisper_context_wrapper * ctx, int i_segment){
      return whisper_full_n_tokens(ctx->ptr, i_segment);
 }
 
-const char * whisper_full_get_token_text_wrapper(struct whisper_context_wrapper * ctx, int i_segment, int i_token){
-    return whisper_full_get_token_text(ctx->ptr, i_segment, i_token);
+nb::bytes whisper_full_get_token_text_wrapper(
+    whisper_context_wrapper * ctx,
+    int i_segment,
+    int i_token) {
+
+    const char *str = whisper_full_get_token_text(ctx->ptr, i_segment, i_token);
+    return str ? nb::bytes(str, strlen(str)) : nb::bytes();
 }
 
 whisper_token whisper_full_get_token_id_wrapper(struct whisper_context_wrapper * ctx, int i_segment, int i_token){
@@ -294,7 +292,7 @@ struct WhisperFullParamsWrapper : public whisper_full_params {
   std::string initial_prompt_str;
   std::string suppress_regex_str;
 public:
-  py::function py_progress_callback;
+  nb::object py_progress_callback;
   WhisperFullParamsWrapper(const whisper_full_params& params = whisper_full_params())
     : whisper_full_params(params),
       initial_prompt_str(params.initial_prompt ? params.initial_prompt : ""),
@@ -308,7 +306,7 @@ public:
       if(self && self->print_progress){
         if (self->py_progress_callback) {
           // call the python callback
-          py::gil_scoped_acquire gil;
+          nb::gil_scoped_acquire gil;
           self->py_progress_callback(progress);  // Call Python callback
         }
         else {
@@ -331,7 +329,7 @@ public:
       if(self && self->print_progress){
         if (self->py_progress_callback) {
           // call the python callback
-          py::gil_scoped_acquire gil;
+          nb::gil_scoped_acquire gil;
           self->py_progress_callback(progress);  // Call Python callback
         }
         else {
@@ -355,29 +353,41 @@ WhisperFullParamsWrapper  whisper_full_default_params_wrapper(enum whisper_sampl
 
 // callbacks mechanism
 
-void _new_segment_callback(struct whisper_context * ctx, struct whisper_state * state, int n_new, void * user_data){
-    struct whisper_context_wrapper ctx_w;
-    ctx_w.ptr = ctx;
-    // call the python callback
-    py::gil_scoped_acquire gil;  // Acquire the GIL while in this scope.
-    py_new_segment_callback(ctx_w, n_new, user_data);
-};
+void _new_segment_callback(
+    whisper_context * ctx,
+    whisper_state * state,
+    int n_new,
+    void * user_data) {
 
-void assign_new_segment_callback(struct whisper_full_params *params, py::function f){
-    params->new_segment_callback = _new_segment_callback;
-    py_new_segment_callback = f;
-};
+    whisper_context_wrapper ctx_w{ctx};
 
-bool _encoder_begin_callback(struct whisper_context * ctx, struct whisper_state * state, void * user_data){
-    struct whisper_context_wrapper ctx_w;
-    ctx_w.ptr = ctx;
-    // call the python callback
-    py::object result_py = py_encoder_begin_callback(ctx_w, user_data);
-    bool res = result_py.cast<bool>();
-    return res;
+    nb::gil_scoped_acquire gil;
+    if (!py_new_segment_callback.is_none()) {
+        py_new_segment_callback(ctx_w, n_new, user_data);
+    }
 }
 
-void assign_encoder_begin_callback(struct whisper_full_params *params, py::function f){
+void assign_new_segment_callback(
+    whisper_full_params * params,
+    nb::object f) {
+
+    params->new_segment_callback = _new_segment_callback;
+    py_new_segment_callback = std::move(f);
+}
+
+bool _encoder_begin_callback(
+    whisper_context * ctx,
+    whisper_state * state,
+    void * user_data) {
+
+    whisper_context_wrapper ctx_w{ctx};
+
+    nb::gil_scoped_acquire gil;
+    nb::object result_py = py_encoder_begin_callback(ctx_w, user_data);
+    return nb::cast<bool>(result_py);
+}
+
+void assign_encoder_begin_callback(struct whisper_full_params *params, nb::object f){
     params->encoder_begin_callback = _encoder_begin_callback;
     py_encoder_begin_callback = f;
 }
@@ -395,29 +405,30 @@ void _logits_filter_callback(
     py_logits_filter_callback(ctx_w, n_tokens, logits, user_data);
 }
 
-void assign_logits_filter_callback(struct whisper_full_params *params, py::function f){
+void assign_logits_filter_callback(struct whisper_full_params *params, nb::object f){
     params->logits_filter_callback = _logits_filter_callback;
     py_logits_filter_callback = f;
 }
 
 void whisper_log_callback(enum ggml_log_level level, const char *text, void *user_data) {
     if (py_whisper_log_callback) {
-        py::gil_scoped_acquire gil;
-        py_whisper_log_callback(static_cast<int>(level), std::string(text), py::none());
+        nb::gil_scoped_acquire gil;
+        py_whisper_log_callback(static_cast<int>(level), std::string(text), nb::none());
     }
 }
 
-void assign_whisper_log_callback(py::function f) {
+void assign_whisper_log_callback(nb::object f) {
     py_whisper_log_callback = f;
     whisper_log_set(whisper_log_callback, nullptr);  // or replace nullptr if you want user_data
 }
 
-py::dict get_greedy(whisper_full_params * params){
-    py::dict d("best_of"_a=params->greedy.best_of);
+nb::dict get_greedy(whisper_full_params * params){
+    nb::dict d;
+    d["best_of"] = params->greedy.best_of;
     return d;
 }
 
-PYBIND11_MODULE(_pywhispercpp, m) {
+NB_MODULE(_pywhispercpp, m) {
     m.doc() = R"pbdoc(
         Pywhispercpp: Python binding to whisper.cpp
         -----------------------
@@ -434,37 +445,41 @@ PYBIND11_MODULE(_pywhispercpp, m) {
     m.attr("WHISPER_HOP_LENGTH") = WHISPER_HOP_LENGTH;
     m.attr("WHISPER_CHUNK_SIZE") = WHISPER_CHUNK_SIZE;
 
-    py::class_<whisper_context_wrapper>(m, "whisper_context");
-    py::class_<whisper_token>(m, "whisper_token")
-            .def(py::init<>());
-    py::class_<whisper_token_data>(m,"whisper_token_data")
-            .def(py::init<>())
-            .def_readwrite("id", &whisper_token_data::id)
-            .def_readwrite("tid", &whisper_token_data::tid)
-            .def_readwrite("p", &whisper_token_data::p)
-            .def_readwrite("plog", &whisper_token_data::plog)
-            .def_readwrite("pt", &whisper_token_data::pt)
-            .def_readwrite("ptsum", &whisper_token_data::ptsum)
-            .def_readwrite("t0", &whisper_token_data::t0)
-            .def_readwrite("t1", &whisper_token_data::t1)
-            .def_readwrite("vlen", &whisper_token_data::vlen);
+    nb::class_<whisper_context_wrapper>(m, "whisper_context");
+    nb::class_<whisper_token_data>(m,"whisper_token_data")
+            .def(nb::init<>())
+            .def_rw("id", &whisper_token_data::id)
+            .def_rw("tid", &whisper_token_data::tid)
+            .def_rw("p", &whisper_token_data::p)
+            .def_rw("plog", &whisper_token_data::plog)
+            .def_rw("pt", &whisper_token_data::pt)
+            .def_rw("ptsum", &whisper_token_data::ptsum)
+            .def_rw("t0", &whisper_token_data::t0)
+            .def_rw("t1", &whisper_token_data::t1)
+            .def_rw("vlen", &whisper_token_data::vlen);
 
-    py::class_<whisper_model_loader_wrapper>(m,"whisper_model_loader")
-            .def(py::init<>());
+    nb::class_<whisper_model_loader_wrapper>(m,"whisper_model_loader")
+            .def(nb::init<>());
 
-    DEF_RELEASE_GIL("whisper_init_from_file_with_params", &whisper_init_from_file_wrapper, "Various functions for loading a ggml whisper model.\n"
+    m.def("whisper_init_from_file_with_params", &whisper_init_from_file_wrapper, nb::call_guard<nb::gil_scoped_release>(),
+                                                                    "Various functions for loading a ggml whisper model.\n"
                                                                     "Allocate (almost) all memory needed for the model.\n"
                                                                     "Return NULL on failure");
-    DEF_RELEASE_GIL("whisper_init_from_buffer_with_params", &whisper_init_from_buffer_wrapper, "Various functions for loading a ggml whisper model.\n"
+
+    m.def("whisper_init_from_buffer_with_params", &whisper_init_from_buffer_wrapper, nb::call_guard<nb::gil_scoped_release>(),
+                                                                        "Various functions for loading a ggml whisper model.\n"
                                                                         "Allocate (almost) all memory needed for the model.\n"
                                                                         "Return NULL on failure");
-    DEF_RELEASE_GIL("whisper_init_with_params", &whisper_init_wrapper, "Various functions for loading a ggml whisper model.\n"
+
+    m.def("whisper_init_with_params", &whisper_init_wrapper, nb::call_guard<nb::gil_scoped_release>(),
+                                                "Various functions for loading a ggml whisper model.\n"
                                                 "Allocate (almost) all memory needed for the model.\n"
                                                 "Return NULL on failure");
 
     m.def("whisper_free", &whisper_free_wrapper, "Frees all memory allocated by the model.");
 
-    m.def("whisper_pcm_to_mel", &whisper_pcm_to_mel_wrapper, "Convert RAW PCM audio to log mel spectrogram.\n"
+    m.def("whisper_pcm_to_mel", &whisper_pcm_to_mel_wrapper, nb::call_guard<nb::gil_scoped_release>(),
+                                                             "Convert RAW PCM audio to log mel spectrogram.\n"
                                                              "The resulting spectrogram is stored inside the provided whisper context.\n"
                                                              "Returns 0 on success");
 
@@ -498,12 +513,6 @@ PYBIND11_MODULE(_pywhispercpp, m) {
                                                 "\"german\" -> 2");
     m.def("whisper_lang_str", &whisper_lang_str, "Return the short string of the specified language id (e.g. 2 -> \"de\"), returns nullptr if not found");
 
-
-
-
-
-
-
     m.def("whisper_lang_auto_detect", &whisper_lang_auto_detect_wrapper, "Use mel data at offset_ms to try and auto-detect the spoken language\n"
                                                                     "Make sure to call whisper_pcm_to_mel() or whisper_set_mel() first\n"
                                                                     "Returns the top language id or negative on failure\n"
@@ -515,11 +524,11 @@ PYBIND11_MODULE(_pywhispercpp, m) {
     m.def("whisper_n_text_ctx", &whisper_n_text_ctx_wrapper, "whisper_n_text_ctx");
     m.def("whisper_n_audio_ctx", &whisper_n_audio_ctx_wrapper, "whisper_n_audio_ctx");
     m.def("whisper_is_multilingual", &whisper_is_multilingual_wrapper, "whisper_is_multilingual");
-    m.def("whisper_get_logits", &whisper_get_logits_wrapper, "Token logits obtained from the last call to whisper_decode()\n"
+    m.def("whisper_get_logits", &whisper_get_logits_wrapper, nb::rv_policy::reference,
+                                                            "Token logits obtained from the last call to whisper_decode()\n"
                                                             "The logits for the last token are stored in the last row\n"
                                                             "Rows: n_tokens\n"
                                                             "Cols: n_vocab");
-
 
     m.def("whisper_token_to_str", &whisper_token_to_str_wrapper, "whisper_token_to_str");
     m.def("whisper_token_to_bytes", &whisper_token_to_bytes_wrapper, "whisper_token_to_bytes");
@@ -539,17 +548,15 @@ PYBIND11_MODULE(_pywhispercpp, m) {
 
     m.def("whisper_print_system_info", &whisper_print_system_info);
 
-
-
     //////////////////////
 
-    py::enum_<whisper_sampling_strategy>(m, "whisper_sampling_strategy")
-        .value("WHISPER_SAMPLING_GREEDY", whisper_sampling_strategy::WHISPER_SAMPLING_GREEDY)
-        .value("WHISPER_SAMPLING_BEAM_SEARCH", whisper_sampling_strategy::WHISPER_SAMPLING_BEAM_SEARCH)
+    nb::enum_<whisper_sampling_strategy>(m, "whisper_sampling_strategy")
+        .value("WHISPER_SAMPLING_GREEDY", WHISPER_SAMPLING_GREEDY)
+        .value("WHISPER_SAMPLING_BEAM_SEARCH", WHISPER_SAMPLING_BEAM_SEARCH)
         .export_values();
 
-    py::class_<whisper_full_params>(m, "__whisper_full_params__internal")
-        .def(py::init<>())
+    nb::class_<whisper_full_params>(m, "__whisper_full_params__internal")
+        .def(nb::init<>())
         .def("__repr__", [](const whisper_full_params& self) {
             std::ostringstream oss;
             oss << "whisper_full_params("
@@ -605,48 +612,48 @@ PYBIND11_MODULE(_pywhispercpp, m) {
             return oss.str();
         });
 
-    py::class_<WhisperFullParamsWrapper, whisper_full_params>(m, "whisper_full_params")
-        .def(py::init<>())
-        .def_readwrite("strategy", &WhisperFullParamsWrapper::strategy)
-        .def_readwrite("n_threads", &WhisperFullParamsWrapper::n_threads)
-        .def_readwrite("n_max_text_ctx", &WhisperFullParamsWrapper::n_max_text_ctx)
-        .def_readwrite("offset_ms", &WhisperFullParamsWrapper::offset_ms)
-        .def_readwrite("duration_ms", &WhisperFullParamsWrapper::duration_ms)
-        .def_readwrite("translate", &WhisperFullParamsWrapper::translate)
-        .def_readwrite("no_context", &WhisperFullParamsWrapper::no_context)
-        .def_readwrite("single_segment", &WhisperFullParamsWrapper::single_segment)
-        .def_readwrite("print_special", &WhisperFullParamsWrapper::print_special)
-        .def_readwrite("print_progress", &WhisperFullParamsWrapper::print_progress)
-        .def_readwrite("progress_callback", &WhisperFullParamsWrapper::py_progress_callback)
-        .def_readwrite("print_realtime", &WhisperFullParamsWrapper::print_realtime)
-        .def_readwrite("print_timestamps", &WhisperFullParamsWrapper::print_timestamps)
-        .def_readwrite("token_timestamps", &WhisperFullParamsWrapper::token_timestamps)
-        .def_readwrite("thold_pt", &WhisperFullParamsWrapper::thold_pt)
-        .def_readwrite("thold_ptsum", &WhisperFullParamsWrapper::thold_ptsum)
-        .def_readwrite("max_len", &WhisperFullParamsWrapper::max_len)
-        .def_readwrite("split_on_word", &WhisperFullParamsWrapper::split_on_word)
-        .def_readwrite("max_tokens", &WhisperFullParamsWrapper::max_tokens)
-        .def_readwrite("audio_ctx", &WhisperFullParamsWrapper::audio_ctx)
-        .def_property("suppress_regex",
+    nb::class_<WhisperFullParamsWrapper, whisper_full_params>(m, "whisper_full_params")
+        .def(nb::init<>())
+        .def_rw("strategy", &WhisperFullParamsWrapper::strategy)
+        .def_rw("n_threads", &WhisperFullParamsWrapper::n_threads)
+        .def_rw("n_max_text_ctx", &WhisperFullParamsWrapper::n_max_text_ctx)
+        .def_rw("offset_ms", &WhisperFullParamsWrapper::offset_ms)
+        .def_rw("duration_ms", &WhisperFullParamsWrapper::duration_ms)
+        .def_rw("translate", &WhisperFullParamsWrapper::translate)
+        .def_rw("no_context", &WhisperFullParamsWrapper::no_context)
+        .def_rw("single_segment", &WhisperFullParamsWrapper::single_segment)
+        .def_rw("print_special", &WhisperFullParamsWrapper::print_special)
+        .def_rw("print_progress", &WhisperFullParamsWrapper::print_progress)
+        .def_rw("progress_callback", &WhisperFullParamsWrapper::py_progress_callback)
+        .def_rw("print_realtime", &WhisperFullParamsWrapper::print_realtime)
+        .def_rw("print_timestamps", &WhisperFullParamsWrapper::print_timestamps)
+        .def_rw("token_timestamps", &WhisperFullParamsWrapper::token_timestamps)
+        .def_rw("thold_pt", &WhisperFullParamsWrapper::thold_pt)
+        .def_rw("thold_ptsum", &WhisperFullParamsWrapper::thold_ptsum)
+        .def_rw("max_len", &WhisperFullParamsWrapper::max_len)
+        .def_rw("split_on_word", &WhisperFullParamsWrapper::split_on_word)
+        .def_rw("max_tokens", &WhisperFullParamsWrapper::max_tokens)
+        .def_rw("audio_ctx", &WhisperFullParamsWrapper::audio_ctx)
+        .def_prop_rw("suppress_regex",
             [](WhisperFullParamsWrapper &self) {
-                return py::str(self.suppress_regex ? self.suppress_regex : "");
+                return nb::str(self.suppress_regex ? self.suppress_regex : "");
             },
             [](WhisperFullParamsWrapper &self, const std::string &new_c) {
                 self.set_suppress_regex(new_c);
             })
-        .def_property("initial_prompt",
+        .def_prop_rw("initial_prompt",
         [](WhisperFullParamsWrapper &self) {
-                return py::str(self.initial_prompt ? self.initial_prompt : "");
+                return nb::str(self.initial_prompt ? self.initial_prompt : "");
             },
             [](WhisperFullParamsWrapper &self, const std::string &initial_prompt) {
                 self.set_initial_prompt(initial_prompt);
             }
         )
-        .def_readwrite("prompt_tokens", &WhisperFullParamsWrapper::prompt_tokens)
-        .def_readwrite("prompt_n_tokens", &WhisperFullParamsWrapper::prompt_n_tokens)
-        .def_property("language",
+        .def_rw("prompt_tokens", &WhisperFullParamsWrapper::prompt_tokens)
+        .def_rw("prompt_n_tokens", &WhisperFullParamsWrapper::prompt_n_tokens)
+        .def_prop_rw("language",
             [](WhisperFullParamsWrapper &self) {
-                return py::str(self.language);
+                return nb::str(self.language);
             },
             [](WhisperFullParamsWrapper &self, const char *new_c) {// using lang_id let us avoid issues with memory management
                 const int lang_id = (new_c && strlen(new_c) > 0) ? whisper_lang_id(new_c) : -1;
@@ -656,37 +663,55 @@ PYBIND11_MODULE(_pywhispercpp, m) {
                     self.language = ""; //defaults to auto-detect
                 }
             })
-        .def_readwrite("suppress_blank", &WhisperFullParamsWrapper::suppress_blank)
-        .def_readwrite("suppress_nst", &WhisperFullParamsWrapper::suppress_nst)
-        .def_readwrite("temperature", &WhisperFullParamsWrapper::temperature)
-        .def_readwrite("max_initial_ts", &WhisperFullParamsWrapper::max_initial_ts)
-        .def_readwrite("length_penalty", &WhisperFullParamsWrapper::length_penalty)
-        .def_readwrite("temperature_inc", &WhisperFullParamsWrapper::temperature_inc)
-        .def_readwrite("entropy_thold", &WhisperFullParamsWrapper::entropy_thold)
-        .def_readwrite("logprob_thold", &WhisperFullParamsWrapper::logprob_thold)
-        .def_readwrite("no_speech_thold", &WhisperFullParamsWrapper::no_speech_thold)
+        .def_rw("suppress_blank", &WhisperFullParamsWrapper::suppress_blank)
+        .def_rw("suppress_nst", &WhisperFullParamsWrapper::suppress_nst)
+        .def_rw("temperature", &WhisperFullParamsWrapper::temperature)
+        .def_rw("max_initial_ts", &WhisperFullParamsWrapper::max_initial_ts)
+        .def_rw("length_penalty", &WhisperFullParamsWrapper::length_penalty)
+        .def_rw("temperature_inc", &WhisperFullParamsWrapper::temperature_inc)
+        .def_rw("entropy_thold", &WhisperFullParamsWrapper::entropy_thold)
+        .def_rw("logprob_thold", &WhisperFullParamsWrapper::logprob_thold)
+        .def_rw("no_speech_thold", &WhisperFullParamsWrapper::no_speech_thold)
         // little hack for the internal stuct <undefined type issue>
-        .def_property("greedy", [](WhisperFullParamsWrapper &self) {return py::dict("best_of"_a=self.greedy.best_of);},
-                                 [](WhisperFullParamsWrapper &self, py::dict dict) {self.greedy.best_of = dict["best_of"].cast<int>();})
-        .def_property("beam_search", [](WhisperFullParamsWrapper &self) {return py::dict("beam_size"_a=self.beam_search.beam_size, "patience"_a=self.beam_search.patience);},
-                                [](WhisperFullParamsWrapper &self, py::dict dict) {self.beam_search.beam_size = dict["beam_size"].cast<int>(); self.beam_search.patience = dict["patience"].cast<float>();})
-        .def_readwrite("new_segment_callback_user_data", &WhisperFullParamsWrapper::new_segment_callback_user_data)
-        .def_readwrite("encoder_begin_callback_user_data", &WhisperFullParamsWrapper::encoder_begin_callback_user_data)
-        .def_readwrite("logits_filter_callback_user_data", &WhisperFullParamsWrapper::logits_filter_callback_user_data);
-
-
-    py::implicitly_convertible<whisper_full_params, WhisperFullParamsWrapper>();
+        .def_prop_rw(
+            "greedy",
+            [](WhisperFullParamsWrapper &self) {
+                nb::dict d;
+                d["best_of"] = self.greedy.best_of;
+                return d;
+            },
+            [](WhisperFullParamsWrapper &self, nb::dict d) {
+                self.greedy.best_of = nb::cast<int>(d["best_of"]);
+            }
+        )
+        .def_prop_rw(
+            "beam_search",
+            [](WhisperFullParamsWrapper &self) {
+                nb::dict d;
+                d["beam_size"] = self.beam_search.beam_size;
+                d["patience"]  = self.beam_search.patience;
+                return d;
+            },
+            [](WhisperFullParamsWrapper &self, nb::dict dict) {
+                self.beam_search.beam_size = nb::cast<int>(dict["beam_size"]);
+                self.beam_search.patience  = nb::cast<float>(dict["patience"]);
+            }
+        )
+        .def_rw("new_segment_callback_user_data", &WhisperFullParamsWrapper::new_segment_callback_user_data)
+        .def_rw("encoder_begin_callback_user_data", &WhisperFullParamsWrapper::encoder_begin_callback_user_data)
+        .def_rw("logits_filter_callback_user_data", &WhisperFullParamsWrapper::logits_filter_callback_user_data);
 
     m.def("whisper_full_default_params", &whisper_full_default_params_wrapper);
 
-    m.def("whisper_full", &whisper_full_wrapper, "Run the entire model: PCM -> log mel spectrogram -> encoder -> decoder -> text\n"
-                                                 "Uses the specified decoding strategy to obtain the text.\n");
+    m.def("whisper_full", &whisper_full_wrapper, nb::call_guard<nb::gil_scoped_release>(), "Run the entire model: PCM -> log mel spectrogram -> encoder -> decoder -> text\n", "Uses the specified decoding strategy to obtain the text.\n");
 
-    m.def("whisper_full_parallel", &whisper_full_parallel_wrapper, "Split the input audio in chunks and process each chunk separately using whisper_full()\n"
+    m.def("whisper_full_parallel", &whisper_full_parallel_wrapper, nb::call_guard<nb::gil_scoped_release>(),
+                                                                    "Split the input audio in chunks and process each chunk separately using whisper_full()\n"
                                                                     "It seems this approach can offer some speedup in some cases.\n"
                                                                     "However, the transcription accuracy can be worse at the beginning and end of each chunk.");
 
-    m.def("whisper_full_n_segments", &whisper_full_n_segments_wrapper, "Number of generated text segments.\n"
+    m.def("whisper_full_n_segments", &whisper_full_n_segments_wrapper, nb::call_guard<nb::gil_scoped_release>(),
+                                                                       "Number of generated text segments.\n"
                                                                        "A segment can be a few words, a sentence, or even a paragraph.\n");
 
     m.def("whisper_full_lang_id", &whisper_full_lang_id_wrapper, "Language id associated with the current context");
@@ -714,13 +739,13 @@ PYBIND11_MODULE(_pywhispercpp, m) {
     // The only difference from the C-Style API
 
     m.def("assign_new_segment_callback", &assign_new_segment_callback, "Assigns a new_segment_callback, takes <whisper_full_params> instance and a callable function with the same parameters which are defined in the interface",
-        py::arg("params"), py::arg("callback"));
+        nb::arg("params"), nb::arg("callback"));
 
     m.def("assign_encoder_begin_callback", &assign_encoder_begin_callback, "Assigns an encoder_begin_callback, takes <whisper_full_params> instance and a callable function with the same parameters which are defined in the interface",
-            py::arg("params"), py::arg("callback"));
+            nb::arg("params"), nb::arg("callback"));
 
     m.def("assign_logits_filter_callback", &assign_logits_filter_callback, "Assigns a logits_filter_callback, takes <whisper_full_params> instance and a callable function with the same parameters which are defined in the interface",
-            py::arg("params"), py::arg("callback"));
+            nb::arg("params"), nb::arg("callback"));
 
     m.def("assign_whisper_log_callback", &assign_whisper_log_callback, "Assign a logging callback for whisper_log_set(level: int, message: str, user_data: None)");
 
