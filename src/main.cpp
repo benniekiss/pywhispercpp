@@ -256,11 +256,10 @@ int64_t whisper_full_get_segment_t1_wrapper(struct whisper_context_wrapper * ctx
     return whisper_full_get_segment_t1(ctx->ptr, i_segment);
 }
 
-// https://pybind11.readthedocs.io/en/stable/advanced/cast/strings.html
 const nb::bytes whisper_full_get_segment_text_wrapper(struct whisper_context_wrapper * ctx, int i_segment){
     const char * c_array = whisper_full_get_segment_text(ctx->ptr, i_segment);
-    size_t length = strlen(c_array); // Determine the length of the array
-    return nb::bytes(c_array, length); // Return the data without transcoding
+    size_t length = strlen(c_array);
+    return nb::bytes(c_array, length);
 };
 
 int whisper_full_n_tokens_wrapper(struct whisper_context_wrapper * ctx, int i_segment){
