@@ -22,7 +22,11 @@ find_package(nanobind CONFIG REQUIRED)
 nanobind_add_module(_pywhispercpp src/main.cpp)
 
 add_subdirectory(whisper.cpp)
-target_link_libraries(_pywhispercpp PRIVATE whisper)
+
+find_package(ggml CONFIG REQUIRED)
+message(STATUS "ggml target: ${ggml_FOUND}")
+
+target_link_libraries(_pywhispercpp PRIVATE whisper ggml::ggml)
 
 function(pywhispercpp_python_install_target target)
     if(NOT TARGET ${target})
