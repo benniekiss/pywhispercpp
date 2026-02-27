@@ -1,0 +1,42 @@
+default_language_version:
+  python: python3.13
+
+repos:
+  - repo: local
+    hooks:
+      - id: ty
+        name: ty check
+        entry: uvx ty check --exit-zero
+        language: system
+        pass_filenames: false
+
+  - repo: builtin
+    hooks:
+      - id: detect-private-key
+
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+        exclude:
+          glob:
+            - src/scribe/data
+            - clients/**/*.jinja.*
+
+      - id: end-of-file-fixer
+        exclude:
+          glob:
+            - src/scribe/data/**
+
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.4
+    hooks:
+      - id: ruff # linter
+        args: [--fix]
+      - id: ruff-format # formatter
+
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: "v22.1.0"
+    hooks:
+      - id: clang-format
