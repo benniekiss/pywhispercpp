@@ -22,7 +22,7 @@ Tracker = "https://github.com/benniekiss/pywhispercpp/issues"
 requires = [
   "scikit-build-core>=0.11.5",
   "nanobind~=2.12.0",
-  "libggml-python~=0.9.11",
+  "libggml-python~=0.13.1",
 ]
 build-backend = "scikit_build_core.build"
 
